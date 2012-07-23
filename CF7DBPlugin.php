@@ -187,16 +187,6 @@ class CF7DBPlugin extends CF7DBPluginLifeCycle {
         }
     }
 
-    function get_callstack() {
-        $dt = debug_backtrace();
-        $cs = '';
-        foreach ($dt as $t) {
-            $cs .= $t['file'] . ' line ' . $t['line'] . ' function ' . $t['function'] . "()\n";
-        }
-
-        return $cs;
-    }
-
     protected function databaseTablesInstalled()
     {
         global $cf7dbplugin_db;
