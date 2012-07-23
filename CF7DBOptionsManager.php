@@ -19,7 +19,7 @@
     If not, see <http://www.gnu.org/licenses/>.
 */
 
-require_once('CF7DBPluginDBConnection.php');
+require_once('CFDBPluginDBConnection.php');
 
 /**
  * Manage options associated with the Plugin.

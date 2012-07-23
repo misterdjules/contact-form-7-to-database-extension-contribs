@@ -20,7 +20,7 @@
 */
 
 require_once('CF7DBInstallIndicator.php');
-require_once('CF7DBPluginDBConnection.php');
+require_once('CFDBPluginDBConnection.php');
 
 /**
  * All the basic plugin life cycle functionality is implemented herein.

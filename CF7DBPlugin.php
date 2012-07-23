@@ -20,7 +20,7 @@
 */
 
 require_once('CF7DBPluginLifeCycle.php');
-require_once('CF7DBPluginDBConnection.php');
+require_once('CFDBPluginDBConnection.php');
 require_once('CFDBShortcodeTable.php');
 require_once('CFDBShortcodeDataTable.php');
 require_once('CFDBShortcodeValue.php');

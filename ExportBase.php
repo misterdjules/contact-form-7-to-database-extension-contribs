@@ -20,7 +20,7 @@
 */
 
 require_once('CF7DBPlugin.php');
-require_once('CF7DBPluginDBConnection.php');
+require_once('CFDBPluginDBConnection.php');
 require_once('CFDBQueryResultIterator.php');
 
 class ExportBase {
