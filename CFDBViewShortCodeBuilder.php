@@ -20,6 +20,7 @@
 */
 
 require_once('CF7DBPlugin.php');
+require_once('CF7DBPluginDBConnection.php');
 require_once('CFDBView.php');
 
 class CFDBViewShortCodeBuilder extends CFDBView {
@@ -35,9 +36,9 @@ class CFDBViewShortCodeBuilder extends CFDBView {
         $this->pageHeader($plugin);
 
         // Identify which forms have data in the database
-        global $wpdb;
+        global $cf7dbplugin_db;
         $tableName = $plugin->getSubmitsTableName();
-        $rows = $wpdb->get_results("select distinct `form_name` from `$tableName` order by `form_name`");
+        $rows = $cf7dbplugin_db->get_results("select distinct `form_name` from `$tableName` order by `form_name`");
         //        if ($rows == null || count($rows) == 0) {
         //            _e('No form submissions in the database', 'contact-form-7-to-database-extension');
         //            return;

@@ -20,6 +20,7 @@
 */
 
 require_once('CF7DBInstallIndicator.php');
+require_once('CF7DBPluginDBConnection.php');
 
 /**
  * All the basic plugin life cycle functionality is implemented herein.
@@ -132,8 +133,8 @@ abstract class CF7DBPluginLifeCycle extends CF7DBInstallIndicator {
      * plus the prefix for this plugin to avoid table name collisions
      */
     protected function prefixTableName($name) {
-        global $wpdb;
-        return $wpdb->prefix . $this->prefix($name);
+        global $cf7dbplugin_db;
+        return $cf7dbplugin_db->prefix . $this->prefix($name);
     }
 
 

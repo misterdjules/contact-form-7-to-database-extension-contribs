@@ -20,6 +20,7 @@
 */
 
 require_once('CF7DBPlugin.php');
+require_once('CF7DBPluginDBConnection.php');
 require_once('CFDBQueryResultIterator.php');
 
 class ExportBase {
@@ -365,9 +366,9 @@ class ExportBase {
     }
 
 //    protected function &getFileMetaData($formName) {
-//        global $wpdb;
+//        global $cf7dbplugin_db;
 //        $tableName = $this->plugin->getSubmitsTableName();
-//        $rows = $wpdb->get_results(
+//        $rows = $cf7dbplugin_db->get_results(
 //            "select distinct `field_name`
 //from `$tableName`
 //where `form_name` = '$formName'
@@ -387,7 +388,7 @@ class ExportBase {
      * @return string
      */
     public function &getPivotQuery($formName, $count = false, $submitTimes = null) {
-        global $wpdb;
+        global $cf7dbplugin_db;
         $tableName = $this->plugin->getSubmitsTableName();
 
         $formNameClause = '';
@@ -403,8 +404,8 @@ class ExportBase {
             $submitTimesClause = 'AND submit_time in ( ' . implode(', ', $submitTimes) . ' )';
         }
 
-        //$rows = $wpdb->get_results("SELECT DISTINCT `field_name`, `field_order` FROM `$tableName` WHERE $formNameClause ORDER BY field_order"); // Pagination bug
-        $rows = $wpdb->get_results("SELECT DISTINCT `field_name` FROM `$tableName` WHERE $formNameClause ORDER BY field_order");
+        //$rows = $cf7dbplugin_db->get_results("SELECT DISTINCT `field_name`, `field_order` FROM `$tableName` WHERE $formNameClause ORDER BY field_order"); // Pagination bug
+        $rows = $cf7dbplugin_db->get_results("SELECT DISTINCT `field_name` FROM `$tableName` WHERE $formNameClause ORDER BY field_order");
         $fields = array();
         foreach ($rows as $aRow) {
             $fields[] = $aRow->field_name;
@@ -489,9 +490,9 @@ class ExportBase {
      * @return int
      */
     public function getDBRowCount($formName) {
-        global $wpdb;
+        global $cf7dbplugin_db;
         $count = 0;
-        $rows = $wpdb->get_results($this->getPivotQuery($formName, true));
+        $rows = $cf7dbplugin_db->get_results($this->getPivotQuery($formName, true));
         foreach ($rows as $aRow) {
             $count = $aRow->count;
             break;

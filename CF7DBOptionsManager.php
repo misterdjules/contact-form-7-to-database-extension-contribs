@@ -19,6 +19,8 @@
     If not, see <http://www.gnu.org/licenses/>.
 */
 
+require_once('CF7DBPluginDBConnection.php');
+
 /**
  * Manage options associated with the Plugin.
  * 1. Prefix all options so they are saved in the database without name conflict
@@ -418,8 +420,8 @@ class CF7DBOptionsManager {
      * @return string|false
      */
     protected function getMySqlVersion() {
-        global $wpdb;
-        $rows = $wpdb->get_results('select version() as mysqlversion');
+        global $cf7dbplugin_db;
+        $rows = $cf7dbplugin_db->get_results('select version() as mysqlversion');
         if (!empty($rows)) {
              return $rows[0]->mysqlversion;
         }

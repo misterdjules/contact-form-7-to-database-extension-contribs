@@ -20,6 +20,7 @@
 */
 
 require_once('CF7DBPlugin.php');
+require_once('CF7DBPluginDBConnection.php');
 require_once('CFDBView.php');
 require_once('ExportToHtmlTable.php');
 
@@ -32,13 +33,13 @@ class CFDBViewWhatsInDB extends CFDBView {
         $canEdit = $plugin->canUserDoRoleOption('CanChangeSubmitData');
         $this->pageHeader($plugin);
 
-        global $wpdb;
+        global $cf7dbplugin_db;
         $tableName = $plugin->getSubmitsTableName();
         $useDataTables = $plugin->getOption('UseDataTablesJS', 'true') == 'true';
         $tableHtmlId = 'cf2dbtable';
 
         // Identify which forms have data in the database
-        $rows = $wpdb->get_results("select distinct `form_name` from `$tableName` order by `form_name`");
+        $rows = $cf7dbplugin_db->get_results("select distinct `form_name` from `$tableName` order by `form_name`");
         if ($rows == null || count($rows) == 0) {
             _e('No form submissions in the database', 'contact-form-7-to-database-extension');
             return;
@@ -62,14 +63,14 @@ class CFDBViewWhatsInDB extends CFDBView {
             if (isset($_POST['delete']) && $canEdit) {
                 if (isset($_POST['submit_time'])) {
                     $submitTime = $_POST['submit_time'];
-                    $wpdb->query(
-                        $wpdb->prepare(
+                    $cf7dbplugin_db->query(
+                        $cf7dbplugin_db->prepare(
                             "delete from `$tableName` where `form_name` = '%s' and `submit_time` = %F",
                             $currSelection, $submitTime));
                 }
                 else  if (isset($_POST['all'])) {
-                    $wpdb->query(
-                        $wpdb->prepare(
+                    $cf7dbplugin_db->query(
+                        $cf7dbplugin_db->prepare(
                             "delete from `$tableName` where `form_name` = '%s'", $currSelection));
                 }
                 else {
@@ -80,8 +81,8 @@ class CFDBViewWhatsInDB extends CFDBView {
                             // We are expecting a time value like '1300728460.6626' but will instead get '1300728460_6626'
                             // so we need to put the '.' back in before going to the DB.
                             $name = str_replace('_', '.', $name);
-                            $wpdb->query(
-                                $wpdb->prepare(
+                            $cf7dbplugin_db->query(
+                                $cf7dbplugin_db->prepare(
                                     "delete from `$tableName` where `form_name` = '%s' and `submit_time` = %F",
                                     $currSelection, $name));
                         }

@@ -20,6 +20,7 @@
 */
 
 require_once('CF7DBPluginLifeCycle.php');
+require_once('CF7DBPluginDBConnection.php');
 require_once('CFDBShortcodeTable.php');
 require_once('CFDBShortcodeDataTable.php');
 require_once('CFDBShortcodeValue.php');
@@ -94,26 +95,31 @@ class CF7DBPlugin extends CF7DBPluginLifeCycle {
         }
         return $optionValue;
     }
+    
+    public function activate()
+    {
+        if (!$this->databaseTablesInstalled())
+            $this->installDatabaseTables();
+    }
 
     public function upgrade() {
-        global $wpdb;
+        global $cf7dbplugin_db;
         $upgradeOk = true;
         $savedVersion = $this->getVersionSaved();
         if (!$savedVersion) { // Prior to storing version in options (pre 1.2)
             // DB Schema Upgrade to support i18n using UTF-8
             $tableName = $this->getSubmitsTableName();
-            $wpdb->show_errors();
-            $upgradeOk &= false !== $wpdb->query("ALTER TABLE `$tableName` MODIFY form_name VARCHAR(127) CHARACTER SET utf8");
-            $upgradeOk &= false !== $wpdb->query("ALTER TABLE `$tableName` MODIFY field_name VARCHAR(127) CHARACTER SET utf8");
-            $upgradeOk &= false !== $wpdb->query("ALTER TABLE `$tableName` MODIFY field_value longtext CHARACTER SET utf8");
-            $wpdb->hide_errors();
+            $cf7dbplugin_db->show_errors();
+            $upgradeOk &= false !== $cf7dbplugin_db->query("ALTER TABLE `$tableName` MODIFY form_name VARCHAR(127) CHARACTER SET utf8");
+            $upgradeOk &= false !== $cf7dbplugin_db->query("ALTER TABLE `$tableName` MODIFY field_name VARCHAR(127) CHARACTER SET utf8");
+            $upgradeOk &= false !== $cf7dbplugin_db->query("ALTER TABLE `$tableName` MODIFY field_value longtext CHARACTER SET utf8");
+            $cf7dbplugin_db->hide_errors();
 
             // Remove obsolete options
             $this->deleteOption('_displayName');
             $this->deleteOption('_metatdata');
             $savedVersion = '1.0';
         }
-
         if ($this->isVersionLessThan($savedVersion, '2.4.1')) {
             if ($this->isVersionLessThan($savedVersion, '2.2')) {
                 if ($this->isVersionLessThan($savedVersion, '2.0')) {
@@ -122,11 +128,11 @@ class CF7DBPlugin extends CF7DBPluginLifeCycle {
                             if ($this->isVersionLessThan($savedVersion, '1.3.1')) {
                                 // Version 1.3.1 update
                                 $tableName = $this->getSubmitsTableName();
-                                $wpdb->show_errors();
-                                $upgradeOk &= false !== $wpdb->query("ALTER TABLE `$tableName` ADD COLUMN `field_order` INTEGER");
-                                $upgradeOk &= false !== $wpdb->query("ALTER TABLE `$tableName` ADD COLUMN `file` LONGBLOB");
-                                $upgradeOk &= false !== $wpdb->query("ALTER TABLE `$tableName` ADD INDEX `submit_time_idx` ( `submit_time` )");
-                                $wpdb->hide_errors();
+                                $cf7dbplugin_db->show_errors();
+                                $upgradeOk &= false !== $cf7dbplugin_db->query("ALTER TABLE `$tableName` ADD COLUMN `field_order` INTEGER");
+                                $upgradeOk &= false !== $cf7dbplugin_db->query("ALTER TABLE `$tableName` ADD COLUMN `file` LONGBLOB");
+                                $upgradeOk &= false !== $cf7dbplugin_db->query("ALTER TABLE `$tableName` ADD INDEX `submit_time_idx` ( `submit_time` )");
+                                $cf7dbplugin_db->hide_errors();
                             }
 
                             // Version 1.4.5 update
@@ -146,34 +152,33 @@ class CF7DBPlugin extends CF7DBPluginLifeCycle {
                             $this->addOption('MaxRows', '100');
                         }
                         $tableName = $this->getSubmitsTableName();
-                        $wpdb->show_errors();
+                        $cf7dbplugin_db->show_errors();
                         /* $upgradeOk &= false !== */
-                        $wpdb->query("ALTER TABLE `$tableName` MODIFY COLUMN submit_time DECIMAL(16,4) NOT NULL");
+                        $cf7dbplugin_db->query("ALTER TABLE `$tableName` MODIFY COLUMN submit_time DECIMAL(16,4) NOT NULL");
                         /* $upgradeOk &= false !== */
-                        $wpdb->query("ALTER TABLE `$tableName` ADD INDEX `form_name_idx` ( `form_name` )");
+                        $cf7dbplugin_db->query("ALTER TABLE `$tableName` ADD INDEX `form_name_idx` ( `form_name` )");
                         /* $upgradeOk &= false !== */
-                        $wpdb->query("ALTER TABLE `$tableName` ADD INDEX `form_name_field_name_idx` ( `form_name`, `field_name` )");
-                        $wpdb->hide_errors();
+                        $cf7dbplugin_db->query("ALTER TABLE `$tableName` ADD INDEX `form_name_field_name_idx` ( `form_name`, `field_name` )");
+                        $cf7dbplugin_db->hide_errors();
                     }
 
                     // Version 2.0 upgrade
                     $tableName = $this->getSubmitsTableName();
                     $oldTableName = $this->prefixTableName('SUBMITS');
-                    @$wpdb->query("RENAME TABLE `$oldTableName` TO `$tableName`");
+                    @$cf7dbplugin_db->query("RENAME TABLE `$oldTableName` TO `$tableName`");
                 }
 
                 // Version 2.2 upgrade
                 $tableName = $this->getSubmitsTableName();
-                $wpdb->query("ALTER TABLE `$tableName` DROP INDEX `form_name_field_name_idx`");
-                $wpdb->query("ALTER TABLE `$tableName` ADD INDEX `field_name_idx` ( `field_name` )");
+                $cf7dbplugin_db->query("ALTER TABLE `$tableName` DROP INDEX `form_name_field_name_idx`");
+                $cf7dbplugin_db->query("ALTER TABLE `$tableName` ADD INDEX `field_name_idx` ( `field_name` )");
             }
 
             // Version 2.4.1 upgrade
             $tableName = $this->getSubmitsTableName();
             $oldTableName = strtolower($tableName);
-            $wpdb->query("RENAME TABLE '$oldTableName' TO '$tableName'");
+            $cf7dbplugin_db->query("RENAME TABLE '$oldTableName' TO '$tableName'");
         }
-
 
         // Post-upgrade, set the current version in the options
         $codeVersion = $this->getVersion();
@@ -182,47 +187,68 @@ class CF7DBPlugin extends CF7DBPluginLifeCycle {
         }
     }
 
+    function get_callstack() {
+        $dt = debug_backtrace();
+        $cs = '';
+        foreach ($dt as $t) {
+            $cs .= $t['file'] . ' line ' . $t['line'] . ' function ' . $t['function'] . "()\n";
+        }
+
+        return $cs;
+    }
+
+    protected function databaseTablesInstalled()
+    {
+        global $cf7dbplugin_db;
+        $tableName = $this->getSubmitsTableName();
+        $cf7dbplugin_db->show_errors();
+        $rows = $cf7dbplugin_db->get_results("SHOW TABLES LIKE '$tableName';");
+        if (empty($rows))
+            return false;
+        return true;
+    }
+
     /**
      * Called by install()
-     * You should: Prefix all table names with $wpdb->prefix
+     * You should: Prefix all table names with $cf7dbplugin_db->prefix
      * Also good: additionally use the prefix for this plugin:
-     * $table_name = $wpdb->prefix . $this->prefix('MY_TABLE');
+     * $table_name = $cf7dbplugin_db->prefix . $this->prefix('MY_TABLE');
      * @return void
      */
     protected function installDatabaseTables() {
-        global $wpdb;
+        global $cf7dbplugin_db;
         $tableName = $this->getSubmitsTableName();
-        $wpdb->show_errors();
-        $wpdb->query("CREATE TABLE IF NOT EXISTS `$tableName` (
+        $cf7dbplugin_db->show_errors();
+        $cf7dbplugin_db->query("CREATE TABLE IF NOT EXISTS `$tableName` (
             `submit_time` DECIMAL(16,4) NOT NULL,
             `form_name` VARCHAR(127) CHARACTER SET utf8,
             `field_name` VARCHAR(127) CHARACTER SET utf8,
             `field_value` LONGTEXT CHARACTER SET utf8,
             `field_order` INTEGER,
             `file` LONGBLOB)");
-        $wpdb->query("ALTER TABLE `$tableName` ADD INDEX `submit_time_idx` ( `submit_time` )");
-        $wpdb->query("ALTER TABLE `$tableName` ADD INDEX `form_name_idx` ( `form_name` )");
-        $wpdb->query("ALTER TABLE `$tableName` ADD INDEX `field_name_idx` ( `field_name` )");
-        $wpdb->hide_errors();
+        $cf7dbplugin_db->query("ALTER TABLE `$tableName` ADD INDEX `submit_time_idx` ( `submit_time` )");
+        $cf7dbplugin_db->query("ALTER TABLE `$tableName` ADD INDEX `form_name_idx` ( `form_name` )");
+        $cf7dbplugin_db->query("ALTER TABLE `$tableName` ADD INDEX `field_name_idx` ( `field_name` )");
+        $cf7dbplugin_db->hide_errors();
     }
 
 
     /**
      * Called by uninstall()
-     * You should: Prefix all table names with $wpdb->prefix
+     * You should: Prefix all table names with $cf7dbplugin_db->prefix
      * Also good: additionally use the prefix for this plugin:
-     * $table_name = $wpdb->prefix . $this->prefix('MY_TABLE');
+     * $table_name = $cf7dbplugin_db->prefix . $this->prefix('MY_TABLE');
      * @return void
      */
     protected function unInstallDatabaseTables() {
         if ('true' == $this->getOption('DropOnUninstall', 'false')) {
-            global $wpdb;
+            global $cf7dbplugin_db;
             $tableName = $this->getSubmitsTableName();
-            $wpdb->query("DROP TABLE IF EXISTS `$tableName`");
+            $cf7dbplugin_db->query("DROP TABLE IF EXISTS `$tableName`");
             //        $tables = array('SUBMITS');
             //        foreach ($tables as $aTable) {
             //            $tableName = $this->prefixTableName($aTable);
-            //            $wpdb->query("DROP TABLE IF EXISTS `$tableName`");
+            //            $cf7dbplugin_db->query("DROP TABLE IF EXISTS `$tableName`");
             //        }
         }
     }
@@ -244,8 +270,8 @@ class CF7DBPlugin extends CF7DBPluginLifeCycle {
     }
 
     public function delete_wpcf7_fields($formName) {
-        global $wpdb;
-        $wpdb->query($wpdb->prepare(
+        global $cf7dbplugin_db;
+        $cf7dbplugin_db->query($cf7dbplugin_db->prepare(
             'delete from `' . $this->getSubmitsTableName() .
                     "` where `form_name` = '%s' and `field_name` in ('_wpcf7', '_wpcf7_version', '_wpcf7_unit_tag', '_wpnonce', '_wpcf7_is_ajax_call', '_wpcf7_captcha_challenge_captcha')",
             $formName));
@@ -373,10 +399,10 @@ class CF7DBPlugin extends CF7DBPluginLifeCycle {
         header('Content-Type: application/json; charset=UTF-8');
         header("Pragma: no-cache");
         header("Expires: Thu, 01 Jan 1970 00:00:00 GMT");
-        global $wpdb;
+        global $cf7dbplugin_db;
         $tableName = $this->getSubmitsTableName();
         $formName = $_REQUEST['form'];
-        $rows = $wpdb->get_results("SELECT DISTINCT `field_name` FROM `$tableName` WHERE `form_name` = '$formName' ORDER BY field_order");
+        $rows = $cf7dbplugin_db->get_results("SELECT DISTINCT `field_name` FROM `$tableName` WHERE `form_name` = '$formName' ORDER BY field_order");
         $fields = array();
         if (!empty($rows)) {
             $fields[] = 'Submitted';
@@ -504,7 +530,7 @@ class CF7DBPlugin extends CF7DBPluginLifeCycle {
             $order = 0;
             $noSaveFields = $this->getNoSaveFields();
             $foundUploadFiles = array();
-            global $wpdb;
+            global $cf7dbplugin_db;
 
 //            $hasDropBox = $this->getOption('dropbox');
 //            if ($hasDropBox) {
@@ -518,7 +544,7 @@ class CF7DBPlugin extends CF7DBPluginLifeCycle {
 
                 $value = is_array($value) ? implode($value, ', ') : $value;
                 $valueClean = stripslashes($value);
-                $wpdb->query($wpdb->prepare($parametrizedQuery,
+                $cf7dbplugin_db->query($cf7dbplugin_db->prepare($parametrizedQuery,
                                             $time,
                                             $title,
                                             $nameClean,
@@ -531,7 +557,7 @@ class CF7DBPlugin extends CF7DBPluginLifeCycle {
                     $filePath = $cf7->uploaded_files[$nameClean];
                     if ($filePath) {
                         $content = file_get_contents($filePath);
-                        $wpdb->query($wpdb->prepare($parametrizedFileQuery,
+                        $cf7dbplugin_db->query($cf7dbplugin_db->prepare($parametrizedFileQuery,
                                                     $content,
                                                     $time,
                                                     $title,
@@ -547,14 +573,14 @@ class CF7DBPlugin extends CF7DBPluginLifeCycle {
                 foreach ($cf7->uploaded_files as $field => $filePath) {
                     if (!in_array($field, $foundUploadFiles) && $filePath) {
                         $fileName = basename($filePath);
-                        $wpdb->query($wpdb->prepare($parametrizedQuery,
+                        $cf7dbplugin_db->query($cf7dbplugin_db->prepare($parametrizedQuery,
                                                     $time,
                                                     $title,
                                                     $field,
                                                     $fileName,
                                                     $order++));
                         $content = file_get_contents($filePath);
-                        $wpdb->query($wpdb->prepare($parametrizedFileQuery,
+                        $cf7dbplugin_db->query($cf7dbplugin_db->prepare($parametrizedFileQuery,
                                                     $content,
                                                     $time,
                                                     $title,
@@ -571,7 +597,7 @@ class CF7DBPlugin extends CF7DBPluginLifeCycle {
                     if (!empty($saveCookies) && !in_array($cookieName, $saveCookies)) {
                         continue;
                     }
-                    $wpdb->query($wpdb->prepare($parametrizedQuery,
+                    $cf7dbplugin_db->query($cf7dbplugin_db->prepare($parametrizedQuery,
                                                 $time,
                                                 $title,
                                                 'Cookie ' . $cookieName,
@@ -584,7 +610,7 @@ class CF7DBPlugin extends CF7DBPluginLifeCycle {
             if ($user) {
                 $order = ($order < 9999) ? 9999 : $order + 1; // large order num to try to make it always next-to-last
                 $current_user = wp_get_current_user(); // WP_User
-                $wpdb->query($wpdb->prepare($parametrizedQuery,
+                $cf7dbplugin_db->query($cf7dbplugin_db->prepare($parametrizedQuery,
                                             $time,
                                             $title,
                                             'Submitted Login',
@@ -594,7 +620,7 @@ class CF7DBPlugin extends CF7DBPluginLifeCycle {
 
             // Capture the IP Address of the submitter
             $order = ($order < 10000) ? 10000 : $order + 1; // large order num to try to make it always last
-            $wpdb->query($wpdb->prepare($parametrizedQuery,
+            $cf7dbplugin_db->query($cf7dbplugin_db->prepare($parametrizedQuery,
                                         $time,
                                         $title,
                                         'Submitted From',
@@ -628,10 +654,10 @@ class CF7DBPlugin extends CF7DBPluginLifeCycle {
      * @return array of (file-name, file-contents) or null if not found
      */
     public function getFileFromDB($time, $formName, $fieldName) {
-        global $wpdb;
+        global $cf7dbplugin_db;
         $tableName = $this->getSubmitsTableName();
         $parametrizedQuery = "SELECT `field_value`, `file` FROM `$tableName` WHERE `submit_time` = %F AND `form_name` = %s AND `field_name` = '%s'";
-        $rows = $wpdb->get_results($wpdb->prepare($parametrizedQuery, $time, $formName, $fieldName));
+        $rows = $cf7dbplugin_db->get_results($cf7dbplugin_db->prepare($parametrizedQuery, $time, $formName, $fieldName));
         if ($rows == null || count($rows) == 0) {
             return null;
         }
@@ -836,8 +862,8 @@ class CF7DBPlugin extends CF7DBPluginLifeCycle {
         //            return $overrideTable;
         //        }
         //return strtolower($this->prefixTableName('SUBMITS'));
-        global $wpdb;
-        return $wpdb->prefix . strtolower($this->prefix('SUBMITS'));
+        global $cf7dbplugin_db;
+        return $cf7dbplugin_db->prefix . strtolower($this->prefix('SUBMITS'));
     }
 
     /**

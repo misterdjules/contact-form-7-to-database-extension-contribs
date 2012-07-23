@@ -19,6 +19,8 @@
     If not, see <http://www.gnu.org/licenses/>.
 */
 
+include('CF7DBPluginDBConfig.php');
+
 class CFDBQueryResultIterator {
 
     /**
@@ -106,8 +108,9 @@ class CFDBQueryResultIterator {
         }
         $this->idx = -1;
 
-        // For performance reasons, we bypass $wpdb so we can call mysql_unbuffered_query
-        $con = mysql_connect(DB_HOST, DB_USER, DB_PASSWORD, true);
+        // For performance reasons, we bypass $cf7dbplugin_db so we can call mysql_unbuffered_query
+        global $cf7dbplugin_dbhost, $cf7dbplugin_dblogin, $cf7dbplugin_dbpassword;
+        $con = mysql_connect($cf7dbplugin_dbhost, $cf7dbplugin_dblogin, $cf7dbplugin_dbpassword, true);
         if (!$con) {
             trigger_error("MySQL Connection failed: " . mysql_error(), E_USER_NOTICE);
             return;
@@ -116,15 +119,15 @@ class CFDBQueryResultIterator {
         // Target charset is in wp-config.php DB_CHARSET
         if (defined('DB_CHARSET')) {
             if (DB_CHARSET != '') {
-                global $wpdb;
-                if (method_exists($wpdb, 'set_charset')) {
+                global $cf7dbplugin_db;
+                if (method_exists($cf7dbplugin_db, 'set_charset')) {
                     $collate = null;
                     if (defined('DB_COLLATE')) {
                         if (DB_COLLATE != '') {
                             $collate = DB_COLLATE;
                         }
                     }
-                    $wpdb->set_charset($con, DB_CHARSET, $collate);
+                    $cf7dbplugin_db->set_charset($con, DB_CHARSET, $collate);
                 }
                 else {
                     $setCharset = 'SET NAMES \'' . DB_CHARSET . '\'';
@@ -138,7 +141,8 @@ class CFDBQueryResultIterator {
             }
         }
 
-        if (!mysql_select_db(DB_NAME, $con)) {
+        global $cf7dbplugin_dbname;
+        if (!mysql_select_db($cf7dbplugin_dbname, $con)) {
             trigger_error('MySQL DB Select failed: ' . mysql_error(), E_USER_NOTICE);
             return;
         }
@@ -158,7 +162,6 @@ class CFDBQueryResultIterator {
                 return;
             }
         }
-
 
         $this->columns = array();
         $this->row = mysql_fetch_assoc($this->results);
